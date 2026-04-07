@@ -1,0 +1,37 @@
+# Tinfoil build + attest workflow.
+#
+# Taken verbatim from the Tinfoil containers template:
+# https://github.com/tinfoilsh/tinfoil-containers-hello-world/blob/main/.github/workflows/tinfoil-build.yml
+#
+# On every `v*` tag push this workflow runs `tinfoilsh/pri-build-action`,
+# which reads tinfoil-config.yml, verifies the pinned image digest exists,
+# generates sigstore attestations binding the digest to this Git tag, and
+# publishes a GitHub pre-release containing the attestation bundle.
+#
+# The Tinfoil dashboard only accepts deployments whose release was created
+# by this workflow — manual releases are rejected because they lack the
+# attestation artifacts the client's SecureClient SDK verifies.
+
+name: Build and Attest
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: tinfoilsh/pri-build-action@5d450a7f30904866efc401e24484b935b7ed52dd # v0.6.1
+        with:
+          config-file: ${{ github.workspace }}/tinfoil-config.yml
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: "true"
