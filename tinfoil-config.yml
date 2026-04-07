@@ -25,10 +25,11 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # This digest was produced by the GitHub Actions workflow run on commit
-    # 2a37c38d of VitaDAO/vita-app (the Dockerfile chown fix) — the first
-    # successful build.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:8a4e40999cad9c5e95ea9dc678e6a62d586e7db18aa4228eb4441c7d960b217a"
+    # This digest was produced by the GitHub Actions workflow run for the
+    # /api/aubrai-x402-status defensive Cache-Control: no-transform fix
+    # (workaround for a Tinfoil shim Content-Encoding: br bug that triggered
+    # ERR_CONTENT_DECODING_FAILED in browsers on every status poll).
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:d4b556bfbdd32dec96a7dddc9b618e77ed11354637652212864402342ace5378"
     env:
       - PORT: "8080"
     secrets:
