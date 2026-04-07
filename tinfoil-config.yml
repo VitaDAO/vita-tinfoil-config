@@ -1,0 +1,52 @@
+# Tinfoil container configuration for the Vita Aubrai chat proxy.
+#
+# Once an image is published the SHA256 digest below is what Tinfoil's
+# remote attestation cryptographically binds to. The browser's SecureClient
+# verifies this same digest before forwarding any HPKE-encrypted prompt
+# bytes — so swapping the image without re-publishing the config will be
+# rejected by every connected client.
+#
+# This repository intentionally contains ONLY this file (plus a README).
+# It is public so the config can be independently audited by anyone.
+# The proxy source code lives in the private VitaDAO/vita-app repo under
+# tinfoil-proxy/, and the built image is published to the public GHCR
+# package ghcr.io/vitadao/vita-tinfoil-proxy.
+
+cvm-version: 0.7.1
+
+# Smallest viable tier for I/O-bound proxy work. Bump only if a future
+# handler needs more memory (e.g. heavier in-enclave AI flows).
+cpus: 2
+memory: 8192
+
+containers:
+  - name: vita-proxy
+    # IMPORTANT: pin the image by digest so the verified hash is immutable.
+    # Do NOT use `:latest`. The `:main` tag is included as a human-readable
+    # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
+    #
+    # This digest was produced by the GitHub Actions workflow run on commit
+    # 2a37c38d of VitaDAO/vita-app (the Dockerfile chown fix) — the first
+    # successful build.
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:8a4e40999cad9c5e95ea9dc678e6a62d586e7db18aa4228eb4441c7d960b217a"
+    env:
+      - PORT: "8080"
+    secrets:
+      # All five are set in the Tinfoil dashboard. They are sealed under
+      # the enclave's measurement and only decrypted inside the attested VM.
+      - SUPABASE_URL
+      - SUPABASE_ANON_KEY
+      - SUPABASE_SERVICE_ROLE_KEY
+      - X402_WALLET_PRIVATE_KEY
+      - SUPERMEMORY_API_KEY
+
+# Tinfoil's reverse-proxy shim terminates TLS, then maps each external
+# path below onto the upstream-port inside the VM. Anything not in this
+# list is rejected by the shim before reaching the container.
+shim:
+  upstream-port: 8080
+  paths:
+    - /health
+    - /api/aubrai-x402-chat
+    - /api/supermemory-context
+    - /api/aubrai-x402-status
