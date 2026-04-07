@@ -4,7 +4,7 @@ Public deployment manifest for the Vita Aubrai chat [Tinfoil](https://docs.tinfo
 
 ## Why does this repo exist?
 
-VitaDAO's main app code lives in a **private** repo ([`VitaDAO/vita-app`](https://github.com/VitaDAO/vita-app)). That's where the proxy source, Dockerfile, and GitHub Actions workflow all live, under [`tinfoil-proxy/`](https://github.com/VitaDAO/vita-app/tree/main/tinfoil-proxy).
+VitaDAO's main app code lives in a **private** repo. That's where the proxy source, Dockerfile, and GitHub Actions workflow all live, under [`tinfoil-proxy/`](https://github.com/VitaDAO/vita-app/tree/main/tinfoil-proxy).
 
 Tinfoil, however, requires the `tinfoil-config.yml` deployment manifest to live in a **public** repository so that anyone can independently audit exactly what's running inside the enclave. Splitting the config into this tiny public repo lets us keep the main app code private while still giving outside observers a clear, immutable trust anchor.
 
