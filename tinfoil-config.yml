@@ -25,11 +25,13 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # This digest was produced by the GitHub Actions workflow run for the
-    # /api/aubrai-x402-status defensive Cache-Control: no-transform fix
-    # (workaround for a Tinfoil shim Content-Encoding: br bug that triggered
-    # ERR_CONTENT_DECODING_FAILED in browsers on every status poll).
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:d4b556bfbdd32dec96a7dddc9b618e77ed11354637652212864402342ace5378"
+    # v0.1.2 (this release) adds a new /api/aubrai-x402-daily-insight route
+    # that encrypts daily insight generation end-to-end: client builds the
+    # prompt from decrypted React Query state, sends only the opaque prompt
+    # text through this enclave, and stores the AI response encrypted in
+    # daily_insights_encrypted. The previous plaintext edge function and
+    # daily_insights table were dropped in the same migration.
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:10788692f75620945988335c2cad169f0c346374fb2f730aaa76616b501b0cef"
     env:
       - PORT: "8080"
     secrets:
@@ -51,3 +53,4 @@ shim:
     - /api/aubrai-x402-chat
     - /api/supermemory-context
     - /api/aubrai-x402-status
+    - /api/aubrai-x402-daily-insight
