@@ -25,23 +25,35 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.2 (this release) adds a new /api/aubrai-x402-daily-insight route
-    # that encrypts daily insight generation end-to-end: client builds the
-    # prompt from decrypted React Query state, sends only the opaque prompt
-    # text through this enclave, and stores the AI response encrypted in
-    # daily_insights_encrypted. The previous plaintext edge function and
-    # daily_insights table were dropped in the same migration.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:10788692f75620945988335c2cad169f0c346374fb2f730aaa76616b501b0cef"
+    # v0.1.3 (this release) adds a new /api/refine-protocol route that
+    # migrates the protocol-refinement "Operational AI" out of a Supabase
+    # edge function into this enclave. Two privacy fixes in one:
+    #   1. AI provider swapped from Anthropic (public SaaS) to Tinfoil
+    #      Inference (Kimi K2.5), running inside Tinfoil's own enclaves.
+    #   2. The old edge function's server-side read of plaintext
+    #      wearable_readings for user context is gone — the client now
+    #      builds the userContext string from already-decrypted hook
+    #      data and ships only the opaque string through HPKE to this
+    #      enclave. The plaintext-read code path is deleted.
+    #
+    # v0.1.2 (previous release) added /api/aubrai-x402-daily-insight,
+    # which encrypts daily insight generation end-to-end.
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:b6930f5826979cbfe1be4aee586330f6f79e46701cf084da6faa1d3066aca82f"
     env:
       - PORT: "8080"
     secrets:
-      # All five are set in the Tinfoil dashboard. They are sealed under
+      # All six are set in the Tinfoil dashboard. They are sealed under
       # the enclave's measurement and only decrypted inside the attested VM.
       - SUPABASE_URL
       - SUPABASE_ANON_KEY
       - SUPABASE_SERVICE_ROLE_KEY
       - X402_WALLET_PRIVATE_KEY
       - SUPERMEMORY_API_KEY
+      # Tinfoil Inference API key — used by the /api/refine-protocol
+      # handler to call inference.tinfoil.sh (Kimi K2.5) as the
+      # Operational AI that refines user protocols. Paste without
+      # surrounding quotes in the Tinfoil dashboard.
+      - TINFOIL_API_KEY
 
 # Tinfoil's reverse-proxy shim terminates TLS, then maps each external
 # path below onto the upstream-port inside the VM. Anything not in this
@@ -54,3 +66,4 @@ shim:
     - /api/supermemory-context
     - /api/aubrai-x402-status
     - /api/aubrai-x402-daily-insight
+    - /api/refine-protocol
