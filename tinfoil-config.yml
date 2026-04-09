@@ -25,41 +25,76 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.4 (this release) adds /api/generate-protocol and
-    # /api/generate-protocol-status, migrating the protocol-GENERATION
-    # flow out of a Supabase edge function into this enclave. Mirrors
-    # the v0.1.3 refine-protocol migration but covers the initial
-    # generation path. Privacy wins:
-    #   1. Aubrai scientist (x402-api.aubr.ai) is forwarded from inside
-    #      the attested enclave.
-    #   2. Structuring step (free-form scientist text → machine-readable
-    #      protocol JSON via tool calling) replaced Google Gemini 2.5
-    #      Flash with Tinfoil Inference Kimi K2.5. The whole pipeline
-    #      now flows through Tinfoil-attested infra only.
-    #   3. The old edge function's plaintext reads of biomarker_readings,
-    #      biomarker_trends, and wearable_readings are gone — the client
-    #      assembles the full 8-section context client-side and ships
-    #      only the opaque promptText through HPKE to this enclave.
+    # v0.1.5 (this release) moves the entire Oura / Whoop / Withings
+    # OAuth + data-fetching path out of Supabase edge functions into
+    # this enclave. Closes the last place in the app where plaintext
+    # PHI touches Supabase infrastructure server-side.
     #
-    # v0.1.3 (previous release) added /api/refine-protocol, which did
-    # the same migration for protocol refinement (Operational AI).
+    # Three coupled privacy wins:
+    #   1. The 9 wearable edge functions ({oura,whoop,withings} ×
+    #      {auth,callback,data}) held access tokens + raw vendor API
+    #      response bodies in RAM for seconds at a time. A rogue
+    #      console.log deploy on any of them could have harvested
+    #      that data from logs. Ported to 9 attested enclave handlers
+    #      under /api/wearable/{vendor}/{auth,callback,fetch}.
+    #   2. OAuth access + refresh tokens in the three *_connections
+    #      tables are now encrypted at rest with AES-256-GCM using a
+    #      new CONNECTION_TOKEN_KEK that lives only in this enclave's
+    #      secret vault (sealed under enclave measurement). A DB dump
+    #      leak yields ciphertext only.
+    #   3. Vendor OAuth callbacks now redirect the browser to enclave
+    #      URLs instead of Supabase functions, so the token-exchange
+    #      step also happens inside attested code.
+    #
+    # Mixed transport for the new routes: auth + fetch are HPKE POST,
+    # callbacks are plain HTTPS GET (vendor-initiated redirects with
+    # short-lived codes in the query string — the codes are useless
+    # without the vendor client_secret which only lives in the vault).
+    #
+    # v0.1.4 (previous release) added /api/generate-protocol and
+    # /api/generate-protocol-status.
+    # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:b04bdbdff1f019db7c2f912314f935f957034b0ebd7e1c3d4ae67c8359102630"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:3c1661f3516c67b3ed6312495df651247111aa831d74c4ac55796d892dd88744"
     env:
       - PORT: "8080"
     secrets:
-      # All six are set in the Tinfoil dashboard. They are sealed under
-      # the enclave's measurement and only decrypted inside the attested VM.
+      # All thirteen are set in the Tinfoil dashboard. They are sealed
+      # under the enclave's measurement and only decrypted inside the
+      # attested VM. Paste all values without surrounding quotes —
+      # the dashboard will bake literal `"` chars into values that
+      # include them, which breaks parsing downstream.
       - SUPABASE_URL
       - SUPABASE_ANON_KEY
       - SUPABASE_SERVICE_ROLE_KEY
       - X402_WALLET_PRIVATE_KEY
       - SUPERMEMORY_API_KEY
-      # Tinfoil Inference API key — used by the /api/refine-protocol
-      # handler to call inference.tinfoil.sh (Kimi K2.5) as the
-      # Operational AI that refines user protocols. Paste without
-      # surrounding quotes in the Tinfoil dashboard.
+      # Tinfoil Inference API key — used by /api/refine-protocol and
+      # /api/generate-protocol-status to call inference.tinfoil.sh
+      # (Kimi K2.5) for the Operational AI and protocol structurer.
       - TINFOIL_API_KEY
+      # NEW in v0.1.5 — wearable OAuth + token encryption.
+      #
+      # CONNECTION_TOKEN_KEK is a 32-byte AES-256 key (base64 encoded)
+      # used by tinfoil-proxy/src/lib/connectionTokenCrypto.ts to
+      # envelope-encrypt access_token / refresh_token before they are
+      # written to oura_connections / whoop_connections /
+      # withings_connections. Generate once with:
+      #   openssl rand -base64 32
+      # and BACK IT UP in a password manager and a paper envelope.
+      # Losing this key makes every wearable connection in the DB
+      # unrecoverable — every connected user would need to reconnect.
+      - CONNECTION_TOKEN_KEK
+      # Vendor OAuth client credentials — used by the enclave callback
+      # + refresh handlers to exchange authorization codes for tokens.
+      # Copy these from the existing Supabase secrets (they're the
+      # same strings), not from fresh dashboard regenerations.
+      - OURA_CLIENT_ID
+      - OURA_CLIENT_SECRET
+      - WHOOP_CLIENT_ID
+      - WHOOP_CLIENT_SECRET
+      - WITHINGS_CLIENT_ID
+      - WITHINGS_CLIENT_SECRET
 
 # Tinfoil's reverse-proxy shim terminates TLS, then maps each external
 # path below onto the upstream-port inside the VM. Anything not in this
@@ -75,3 +110,16 @@ shim:
     - /api/refine-protocol
     - /api/generate-protocol
     - /api/generate-protocol-status
+    # NEW in v0.1.5 — wearable OAuth + fetchers.
+    # auth + fetch are HPKE POST (browser → SecureClient → enclave).
+    # callback is a plain HTTPS GET used by the vendor to redirect
+    # the browser back with a short-lived code in the query string.
+    - /api/wearable/oura/auth
+    - /api/wearable/oura/callback
+    - /api/wearable/oura/fetch
+    - /api/wearable/whoop/auth
+    - /api/wearable/whoop/callback
+    - /api/wearable/whoop/fetch
+    - /api/wearable/withings/auth
+    - /api/wearable/withings/callback
+    - /api/wearable/withings/fetch
