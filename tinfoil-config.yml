@@ -25,37 +25,40 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.5 (this release) moves the entire Oura / Whoop / Withings
-    # OAuth + data-fetching path out of Supabase edge functions into
-    # this enclave. Closes the last place in the app where plaintext
-    # PHI touches Supabase infrastructure server-side.
+    # v0.1.6 (this release) finalises the wearable token encryption-
+    # at-rest migration. The enclave handlers now read and write only
+    # the ciphertext token columns (access_token_ciphertext /
+    # _nonce / _kek_version) on the three *_connections tables. The
+    # fallback-to-plaintext code path that bridged the Phase 1 → 2
+    # window is gone.
     #
-    # Three coupled privacy wins:
-    #   1. The 9 wearable edge functions ({oura,whoop,withings} ×
-    #      {auth,callback,data}) held access tokens + raw vendor API
-    #      response bodies in RAM for seconds at a time. A rogue
-    #      console.log deploy on any of them could have harvested
-    #      that data from logs. Ported to 9 attested enclave handlers
-    #      under /api/wearable/{vendor}/{auth,callback,fetch}.
-    #   2. OAuth access + refresh tokens in the three *_connections
-    #      tables are now encrypted at rest with AES-256-GCM using a
-    #      new CONNECTION_TOKEN_KEK that lives only in this enclave's
-    #      secret vault (sealed under enclave measurement). A DB dump
-    #      leak yields ciphertext only.
-    #   3. Vendor OAuth callbacks now redirect the browser to enclave
-    #      URLs instead of Supabase functions, so the token-exchange
-    #      step also happens inside attested code.
+    # Companion SQL migration 20260413_wearable_token_encryption_
+    # phase2.sql (applied AFTER this container deploys) asserts every
+    # row has ciphertext populated, marks the encrypted columns
+    # NOT NULL, and DROPs the plaintext access_token / refresh_token
+    # columns from oura_connections / whoop_connections /
+    # withings_connections entirely. After that migration runs, the
+    # schema makes it PHYSICALLY IMPOSSIBLE for a plaintext OAuth
+    # token to exist in these tables — the only code path that can
+    # write token rows is this attested enclave, and the only key
+    # that can decrypt them (CONNECTION_TOKEN_KEK) is sealed in this
+    # container's secret vault.
     #
-    # Mixed transport for the new routes: auth + fetch are HPKE POST,
-    # callbacks are plain HTTPS GET (vendor-initiated redirects with
-    # short-lived codes in the query string — the codes are useless
-    # without the vendor client_secret which only lives in the vault).
+    # No new secrets or shim paths in v0.1.6 — pure digest bump +
+    # code cleanup behind the same external API surface. Rollback
+    # path from v0.1.5 is safe up until the Phase 2 SQL is applied;
+    # after that, redeploying v0.1.5 would try to SELECT the dropped
+    # plaintext columns and every sync would break.
     #
-    # v0.1.4 (previous release) added /api/generate-protocol and
-    # /api/generate-protocol-status.
+    # v0.1.5 (previous release) moved the entire Oura / Whoop /
+    # Withings OAuth + data-fetching path out of Supabase edge
+    # functions into this enclave, added CONNECTION_TOKEN_KEK, and
+    # added the 9 /api/wearable/{vendor}/{auth,callback,fetch}
+    # routes.
+    # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:3c1661f3516c67b3ed6312495df651247111aa831d74c4ac55796d892dd88744"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:c93206c912b367d982ba0b5735f311be388f62fe6e806bb0a8ccdc9c382f0f2b"
     env:
       - PORT: "8080"
     secrets:
