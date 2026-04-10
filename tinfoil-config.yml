@@ -25,44 +25,37 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.6 (this release) finalises the wearable token encryption-
-    # at-rest migration. The enclave handlers now read and write only
-    # the ciphertext token columns (access_token_ciphertext /
-    # _nonce / _kek_version) on the three *_connections tables. The
-    # fallback-to-plaintext code path that bridged the Phase 1 → 2
-    # window is gone.
+    # v0.1.7 (this release) adds application-level HPKE encryption
+    # on ALL x402 prompts — not just the interactive chat (which was
+    # done in the prior vita-app commit by Alexandru) but also daily
+    # insight, protocol refinement, and protocol generation.
     #
-    # Companion SQL migration 20260413_wearable_token_encryption_
-    # phase2.sql (applied AFTER this container deploys) asserts every
-    # row has ciphertext populated, marks the encrypted columns
-    # NOT NULL, and DROPs the plaintext access_token / refresh_token
-    # columns from oura_connections / whoop_connections /
-    # withings_connections entirely. After that migration runs, the
-    # schema makes it PHYSICALLY IMPOSSIBLE for a plaintext OAuth
-    # token to exist in these tables — the only code path that can
-    # write token rows is this attested enclave, and the only key
-    # that can decrypt them (CONNECTION_TOKEN_KEK) is sealed in this
-    # container's secret vault.
+    # Every POST to x402-api.aubr.ai now goes to /api/chat-private
+    # with {hpke_ciphertext, hpke_ephemeral_public_key} instead of
+    # plaintext {message} to /api/chat. x402 can still verify the
+    # USDC payment but cannot decrypt the prompt — only Aubrai's
+    # enclave (holding the matching X25519 private key) can read it.
     #
-    # No new secrets or shim paths in v0.1.6 — pure digest bump +
-    # code cleanup behind the same external API surface. Rollback
-    # path from v0.1.5 is safe up until the Phase 2 SQL is applied;
-    # after that, redeploying v0.1.5 would try to SELECT the dropped
-    # plaintext columns and every sync would break.
+    # Two new secrets in this version:
+    #   - AUBRAI_ENCLAVE_URL: Aubrai's attestation endpoint, used to
+    #     fetch + cache the X25519 public key at boot
+    #   - AUBRAI_CONFIG_REPO: Aubrai's Tinfoil config repo for
+    #     attestation verification
     #
-    # v0.1.5 (previous release) moved the entire Oura / Whoop /
-    # Withings OAuth + data-fetching path out of Supabase edge
-    # functions into this enclave, added CONNECTION_TOKEN_KEK, and
-    # added the 9 /api/wearable/{vendor}/{auth,callback,fetch}
-    # routes.
+    # Also: the in-repo tinfoil-config.yml in vita-app was deleted.
+    # This repo (vita-tinfoil-config) is the sole authoritative
+    # source for the Tinfoil deployment manifest.
+    #
+    # v0.1.6 finalised wearable token encryption (Phase 2 column drops).
+    # v0.1.5 moved wearable OAuth + fetchers into the enclave.
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:c93206c912b367d982ba0b5735f311be388f62fe6e806bb0a8ccdc9c382f0f2b"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:24bc5da1e8c847afbdb004c31e38b63b962621611b901c0ebb104be5f6475c0b"
     env:
       - PORT: "8080"
     secrets:
-      # All thirteen are set in the Tinfoil dashboard. They are sealed
+      # All fifteen are set in the Tinfoil dashboard. They are sealed
       # under the enclave's measurement and only decrypted inside the
       # attested VM. Paste all values without surrounding quotes —
       # the dashboard will bake literal `"` chars into values that
@@ -98,6 +91,14 @@ containers:
       - WHOOP_CLIENT_SECRET
       - WITHINGS_CLIENT_ID
       - WITHINGS_CLIENT_SECRET
+      # NEW in v0.1.7 — Aubrai enclave attestation for HPKE-encrypted
+      # x402 prompts. The enclave fetches Aubrai's attested X25519
+      # public key from AUBRAI_ENCLAVE_URL/enclave/attestation at boot,
+      # caches it, and uses it to HPKE-encrypt every prompt before
+      # forwarding through x402. AUBRAI_CONFIG_REPO is the GitHub repo
+      # that Tinfoil SDK uses for attestation verification.
+      - AUBRAI_ENCLAVE_URL
+      - AUBRAI_CONFIG_REPO
 
 # Tinfoil's reverse-proxy shim terminates TLS, then maps each external
 # path below onto the upstream-port inside the VM. Anything not in this
