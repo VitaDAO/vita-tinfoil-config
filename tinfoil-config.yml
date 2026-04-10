@@ -25,28 +25,25 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.8 (this release) fixes Aubrai attestation to use the
-    # official @tinfoilsh/verifier package instead of a custom app
-    # endpoint. The previous version fetched from
-    # ${AUBRAI_ENCLAVE_URL}/enclave/attestation — a custom route
-    # that was architecturally wrong (app self-reporting its own key)
-    # and returning 404 / HTML fallback. Now uses the Verifier class
-    # which fetches from /.well-known/tinfoil-attestation (served
-    # automatically by the Tinfoil shim), verifies AMD SEV-SNP
-    # hardware attestation + sigstore code provenance, and extracts
-    # the HPKE public key from the hardware-signed reportData.
+    # v0.1.9 (this release) fixes the v0.1.8 boot crash by making
+    # the @tinfoilsh/verifier import dynamic (lazy) instead of
+    # static. The server always starts; the SDK import runs on the
+    # first chat request. If it fails in Deno, the error is caught
+    # and falls back to the AUBRAI_HPKE_PUBLIC_KEY env var.
     #
-    # @tinfoilsh/verifier confirmed working in Deno 2.1.4 — its
-    # Web Crypto dependency is natively supported.
+    # New optional secret: AUBRAI_HPKE_PUBLIC_KEY (hex-encoded
+    # 32-byte X25519 key). Used as a fallback if the SDK attestation
+    # path doesn't work in Deno. Weaker security (no attestation
+    # proof) but keeps the encrypted x402 flow working.
     #
-    # v0.1.7 added HPKE encryption on all x402 prompts +
-    #   AUBRAI_ENCLAVE_URL / AUBRAI_CONFIG_REPO secrets.
+    # v0.1.8 attempted static import of @tinfoilsh/verifier — 502.
+    # v0.1.7 added HPKE encryption on all x402 prompts.
     # v0.1.6 finalised wearable token encryption (Phase 2).
     # v0.1.5 moved wearable OAuth + fetchers into the enclave.
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:e8602bc764fd247cc72ee32ba238da6c7bd8d5d9980f5df513b6ffa7a37360a4"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:6d890984ad2d4f28be183a985e8fa431dfb1f077cfb8e51ded4fa84c06aca6f8"
     env:
       - PORT: "8080"
     secrets:
@@ -94,6 +91,12 @@ containers:
       # that Tinfoil SDK uses for attestation verification.
       - AUBRAI_ENCLAVE_URL
       - AUBRAI_CONFIG_REPO
+      # Optional fallback: hex-encoded 32-byte X25519 HPKE public key.
+      # Used if @tinfoilsh/verifier SDK doesn't work in Deno at runtime.
+      # Weaker than attestation (no cryptographic proof of key provenance)
+      # but keeps the encrypted x402 flow working. Get the value from
+      # Alexandru / the Aubrai team.
+      - AUBRAI_HPKE_PUBLIC_KEY
 
 # Tinfoil's reverse-proxy shim terminates TLS, then maps each external
 # path below onto the upstream-port inside the VM. Anything not in this
