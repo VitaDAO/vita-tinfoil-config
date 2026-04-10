@@ -25,33 +25,28 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.7 (this release) adds application-level HPKE encryption
-    # on ALL x402 prompts — not just the interactive chat (which was
-    # done in the prior vita-app commit by Alexandru) but also daily
-    # insight, protocol refinement, and protocol generation.
+    # v0.1.8 (this release) fixes Aubrai attestation to use the
+    # official @tinfoilsh/verifier package instead of a custom app
+    # endpoint. The previous version fetched from
+    # ${AUBRAI_ENCLAVE_URL}/enclave/attestation — a custom route
+    # that was architecturally wrong (app self-reporting its own key)
+    # and returning 404 / HTML fallback. Now uses the Verifier class
+    # which fetches from /.well-known/tinfoil-attestation (served
+    # automatically by the Tinfoil shim), verifies AMD SEV-SNP
+    # hardware attestation + sigstore code provenance, and extracts
+    # the HPKE public key from the hardware-signed reportData.
     #
-    # Every POST to x402-api.aubr.ai now goes to /api/chat-private
-    # with {hpke_ciphertext, hpke_ephemeral_public_key} instead of
-    # plaintext {message} to /api/chat. x402 can still verify the
-    # USDC payment but cannot decrypt the prompt — only Aubrai's
-    # enclave (holding the matching X25519 private key) can read it.
+    # @tinfoilsh/verifier confirmed working in Deno 2.1.4 — its
+    # Web Crypto dependency is natively supported.
     #
-    # Two new secrets in this version:
-    #   - AUBRAI_ENCLAVE_URL: Aubrai's attestation endpoint, used to
-    #     fetch + cache the X25519 public key at boot
-    #   - AUBRAI_CONFIG_REPO: Aubrai's Tinfoil config repo for
-    #     attestation verification
-    #
-    # Also: the in-repo tinfoil-config.yml in vita-app was deleted.
-    # This repo (vita-tinfoil-config) is the sole authoritative
-    # source for the Tinfoil deployment manifest.
-    #
-    # v0.1.6 finalised wearable token encryption (Phase 2 column drops).
+    # v0.1.7 added HPKE encryption on all x402 prompts +
+    #   AUBRAI_ENCLAVE_URL / AUBRAI_CONFIG_REPO secrets.
+    # v0.1.6 finalised wearable token encryption (Phase 2).
     # v0.1.5 moved wearable OAuth + fetchers into the enclave.
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:24bc5da1e8c847afbdb004c31e38b63b962621611b901c0ebb104be5f6475c0b"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:e8602bc764fd247cc72ee32ba238da6c7bd8d5d9980f5df513b6ffa7a37360a4"
     env:
       - PORT: "8080"
     secrets:
