@@ -43,7 +43,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:6d890984ad2d4f28be183a985e8fa431dfb1f077cfb8e51ded4fa84c06aca6f8"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:c14715e38d1690026dce5b3f0044cae3fbdf3543a0fc209a9ae83e6d6ca87b6e"
     env:
       - PORT: "8080"
     secrets:
