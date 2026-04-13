@@ -23,7 +23,7 @@ containers:
   - name: vita-proxy
     # IMPORTANT: pin the image by digest so the verified hash is immutable.
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
-    # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
+    # pointer only — Tinfoil binds verification to the `@sha256:080853e5ef1d23dd203f9d419ef316623fccd3ff827b366cbb3c00e80a5a41c7...` suffix.
     #
     # v0.1.9 (this release) fixes the v0.1.8 boot crash by making
     # the @tinfoilsh/verifier import dynamic (lazy) instead of
@@ -43,7 +43,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:c14715e38d1690026dce5b3f0044cae3fbdf3543a0fc209a9ae83e6d6ca87b6e"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:080853e5ef1d23dd203f9d419ef316623fccd3ff827b366cbb3c00e80a5a41c7"
     env:
       - PORT: "8080"
     secrets:
