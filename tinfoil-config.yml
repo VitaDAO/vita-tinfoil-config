@@ -97,8 +97,6 @@ containers:
       # but keeps the encrypted x402 flow working. Get the value from
       # Alexandru / the Aubrai team.
       - AUBRAI_HPKE_PUBLIC_KEY
-      # NEW in v0.1.20 — supplement parsing via Firecrawl web search.
-      - FIRECRAWL_API_KEY
 
 # Tinfoil's reverse-proxy shim terminates TLS, then maps each external
 # path below onto the upstream-port inside the VM. Anything not in this
