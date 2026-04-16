@@ -23,7 +23,7 @@ containers:
   - name: vita-proxy
     # IMPORTANT: pin the image by digest so the verified hash is immutable.
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
-    # pointer only — Tinfoil binds verification to the `@sha256:9f01d90bf3fe5c812bb1785156da6d55284239abdeff1ffcc64e1d7cd8d6ac67...` suffix.
+    # pointer only — Tinfoil binds verification to the `@sha256:d1c14337d3b73e48e1604f52d71643ab196df7956f39b474d5999e48c3ecb508...` suffix.
     #
     # v0.1.9 (this release) fixes the v0.1.8 boot crash by making
     # the @tinfoilsh/verifier import dynamic (lazy) instead of
@@ -43,7 +43,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:9f01d90bf3fe5c812bb1785156da6d55284239abdeff1ffcc64e1d7cd8d6ac67"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:d1c14337d3b73e48e1604f52d71643ab196df7956f39b474d5999e48c3ecb508"
     env:
       - PORT: "8080"
     secrets:
@@ -131,3 +131,5 @@ shim:
     - /api/wearable/withings/fetch
     # NEW in v0.1.20 — supplement parsing.
     - /api/parse-supplement
+    # Condition autocomplete suggestions.
+    - /api/suggest-condition
