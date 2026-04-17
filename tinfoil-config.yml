@@ -25,13 +25,15 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.27 (this release) migrates /api/parse-lab-results from the
-    # Supabase edge function into the enclave. Lab PDFs and images are
-    # now decrypted only inside the attested VM — host OS, Supabase
-    # admins, and Tinfoil operators cannot read the raw bytes or
-    # extracted biomarker values. The old edge function stays deployed
-    # as a rollback path.
+    # v0.1.28 (this release) improves the lab-parser biomarker matcher
+    # and auto-creates catalog rows for names that don't match any
+    # existing entry — eliminates the "orphan trend" class where
+    # biomarker_trends_encrypted rows had biomarker_id IS NULL because
+    # the extracted text couldn't be reconciled with the catalog.
+    # Requires the 20260417_biomarkers_unique_name_auto_generated.sql
+    # migration (already applied) for the UNIQUE(name) upsert path.
     #
+    # v0.1.27 migrated /api/parse-lab-results into the enclave.
     # v0.1.26 added Cache-Control: no-transform to all handler responses.
     # v0.1.25 added /api/suggest-condition.
     # v0.1.24 switched supplement parser to gemma4-31b + Firecrawl.
@@ -43,7 +45,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:18d291103e2f749e519af630f8ec70bcb22aaf66142b8844f0d27c92f02671d9"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:e37a0078241c07391e439367bc053c017bb219c3aaf481f668281626566e4f6f"
     env:
       - PORT: "8080"
     secrets:
