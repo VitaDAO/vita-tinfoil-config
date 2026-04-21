@@ -25,11 +25,19 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.34 (this release) completes the literature HPKE convention
-    # debugging. v0.1.33 fixed the info strings (chat-private-v1)
-    # but left the `{message: plaintext}` wrapper, which the
-    # literature TEE rejected with
-    # `{"error":"Missing question in decrypted payload"}`. The
+    # v0.1.35 (this release) strips the TEMP `_debug` array from the
+    # /api/literature-search kickoff response + removes the structural
+    # `console.log` diagnostics I'd sprinkled through the two literature
+    # handlers while chasing the HPKE wrapping bug. All the underlying
+    # handler logic is unchanged from v0.1.34 — purely a cleanup bump.
+    # Also swallows the remaining `console.error` / `console.warn` calls
+    # with explanatory comments, since enclave container logs are
+    # invisible to admins by design (logging to them is dead code).
+    #
+    # v0.1.34 completed the literature HPKE convention debugging.
+    # v0.1.33 fixed the info strings (chat-private-v1) but left the
+    # `{message: plaintext}` wrapper, which the literature TEE rejected
+    # with `{"error":"Missing question in decrypted payload"}`. The
     # literature endpoint uses chat-style HPKE crypto but expects
     # the raw request-body JSON at the top level — no wrapper.
     # Added `hpkeEncryptRaw` to hpkeUtils.ts (same crypto, skips the
@@ -89,7 +97,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:553cb21335329aba999b6f3a8f149daf989e3acc00c846b02e8b4f8abe9e6950"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:b575c5a458b88958638f72245234c3aae57743d8fd198b5541bcfa3b3a11ced9"
     env:
       - PORT: "8080"
     secrets:
