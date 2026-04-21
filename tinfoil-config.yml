@@ -25,7 +25,17 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.31 (this release) adds a TEMP `_debug` array in the
+    # v0.1.32 (this release) is byte-identical to v0.1.31's container
+    # image — same `_debug` array diagnostic, same code. This bump
+    # exists only to change every GitHub asset URL
+    # (`/releases/latest`, `/v0.1.32/tinfoil.hash`, etc.) so browser
+    # SDK caches route around whatever stale data is stuck from the
+    # tag-recycling dance earlier. After user clicks Redeploy for
+    # v0.1.32 in the Tinfoil dashboard, the enclave boots with the
+    # new config-hash in its cmdline → new expected SEV-SNP
+    # measurement → match against the freshly-fetched signed release.
+    #
+    # v0.1.31 added a TEMP `_debug` array in the
     # /api/literature-search kickoff response body so the browser can
     # see which of the four `continue` branches is dropping every
     # term on the floor (empty jobs[] seen in smoke test after v0.1.30).
@@ -37,8 +47,8 @@ containers:
     #
     # (NOTE: an earlier v0.1.31 tag existed with dead-letter console.log
     # only; that tag + release were deleted after confirming logs are
-    # invisible. This v0.1.31 re-uses the number with a different,
-    # actually-useful diagnostic payload.)
+    # invisible. A second v0.1.31 was published with the `_debug`
+    # payload but got stuck in browser SDK caches, hence v0.1.32.)
     #
     # v0.1.30 fixed two bugs in v0.1.29's Research Radar migration:
     #  1. Consent gate was `hasConsent("research")` but the client has
