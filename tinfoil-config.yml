@@ -25,13 +25,35 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.35 (this release) strips the TEMP `_debug` array from the
-    # /api/literature-search kickoff response + removes the structural
-    # `console.log` diagnostics I'd sprinkled through the two literature
-    # handlers while chasing the HPKE wrapping bug. All the underlying
-    # handler logic is unchanged from v0.1.34 — purely a cleanup bump.
-    # Also swallows the remaining `console.error` / `console.warn` calls
-    # with explanatory comments, since enclave container logs are
+    # v0.1.36 (this release) fixes a silent deep-mode failure: the
+    # ephemeral HPKE key TTL (10 min) was exactly matching the upstream
+    # x402 deep-scan duration, so the enclave was evicting the private
+    # key mid-flight and the next poll came back with "Encryption key
+    # expired. Please run the scan again." — no results, no visible UI
+    # error (client treated the quiet 200 as terminal).
+    #
+    # Now: TTL is 15 min AND sliding — every status poll that sees the
+    # upstream job still in flight (active/pending/queued/unknown) calls
+    # `touchEphemeralKey(jobId)` to bump the deadline. In practice the
+    # key lives as long as the client keeps polling; a client that
+    # disappears for 15 consecutive minutes is treated as gone. If the
+    # key has already been purged by the time a poll lands (container
+    # restart, prior expiry), the handler now returns `{status:
+    # "failed", error: "Encryption key expired..."}` immediately instead
+    # of letting the client spin forever.
+    #
+    # Paired client-side changes (vita-app): (1) a `toast({variant:
+    # destructive})` fires when any deep-mode job ends `failed`, so the
+    # user sees the enclave's error string; (2) ResearchScanProvider
+    # moved from Dashboard.tsx to App.tsx above <Routes> so deep polling
+    # survives in-SPA navigation between /dashboard, /profile, etc.
+    #
+    # v0.1.35 stripped the TEMP `_debug` array from the
+    # /api/literature-search kickoff response + removed the structural
+    # `console.log` diagnostics sprinkled through the two literature
+    # handlers while chasing the HPKE wrapping bug.
+    # Also swallowed the remaining `console.error` / `console.warn`
+    # calls with explanatory comments, since enclave container logs are
     # invisible to admins by design (logging to them is dead code).
     #
     # v0.1.34 completed the literature HPKE convention debugging.
@@ -97,7 +119,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:b575c5a458b88958638f72245234c3aae57743d8fd198b5541bcfa3b3a11ced9"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:75031b6e7cd0d124b83a58ab9b913ec91bb7a096b1e91099254c92c112e5a040"
     env:
       - PORT: "8080"
     secrets:
