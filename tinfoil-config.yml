@@ -25,14 +25,22 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.28 (this release) improves the lab-parser biomarker matcher
-    # and auto-creates catalog rows for names that don't match any
-    # existing entry — eliminates the "orphan trend" class where
-    # biomarker_trends_encrypted rows had biomarker_id IS NULL because
-    # the extracted text couldn't be reconciled with the catalog.
-    # Requires the 20260417_biomarkers_unique_name_auto_generated.sql
-    # migration (already applied) for the UNIQUE(name) upsert path.
+    # v0.1.29 (this release) migrates Research Radar literature search
+    # into the enclave and swaps the upstream x402 API from
+    # /api/literature (plaintext) to /api/literature/encrypted (HPKE).
+    # Three threat surfaces close:
+    #  1. x402 / path-to-TEE no longer sees plaintext questions.
+    #  2. Supabase admin no longer sees chronic_conditions /
+    #     tracked_terms / assembled prompts / decrypted x402 responses
+    #     (the two edge functions literature-search-x402 + deep-job-poll
+    #     stay live as rollback cover until verified, then get deleted).
+    #  3. Function-log term-name noise is gone (those console.logs
+    #     lived in the edge functions which no longer receive traffic).
+    # Adds /api/literature-search and /api/literature-search/status to
+    # the shim allowlist.
     #
+    # v0.1.28 improved the lab-parser biomarker matcher + auto-created
+    # catalog rows (same image as v0.1.27 — Supabase-side changes only).
     # v0.1.27 migrated /api/parse-lab-results into the enclave.
     # v0.1.26 added Cache-Control: no-transform to all handler responses.
     # v0.1.25 added /api/suggest-condition.
@@ -45,7 +53,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:e37a0078241c07391e439367bc053c017bb219c3aaf481f668281626566e4f6f"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:b8a9bff16d4ac73bb6d06725d91b40f794e878fe5dcb9a79fe5ec700d4ec9c3c"
     env:
       - PORT: "8080"
     secrets:
@@ -137,3 +145,8 @@ shim:
     - /api/suggest-condition
     # NEW in v0.1.27 — lab report parsing (migrated from Supabase edge function).
     - /api/parse-lab-results
+    # NEW in v0.1.29 — Research Radar literature search (migrated from
+    # Supabase edge functions literature-search-x402 + deep-job-poll).
+    # Kickoff POST + long-poll status POST, both HPKE to the enclave.
+    - /api/literature-search
+    - /api/literature-search/status
