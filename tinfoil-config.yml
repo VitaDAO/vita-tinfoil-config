@@ -25,17 +25,20 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.30 (this release) fixes two bugs in v0.1.29's Research Radar
-    # migration discovered on the first smoke test:
+    # v0.1.31 (this release) ships TEMPORARY diagnostic logs inside the
+    # Research Radar kickoff + status handlers so we can debug why the
+    # first v0.1.30 smoke-test scan returned 200 with no items. Logs
+    # are STRUCTURAL ONLY — no question text, term text, or reference
+    # content is written. Scheduled for removal once the pipeline is
+    # verified end-to-end.
+    #
+    # v0.1.30 fixed two bugs in v0.1.29's Research Radar migration:
     #  1. Consent gate was `hasConsent("research")` but the client has
-    #     no UI toggle for that scope (defined in the server-side
-    #     ConsentPurpose union but never exposed). Swapped to
-    #     `ai_insights` + `health_tracking`, same as generateProtocol /
-    #     refineProtocol — the scopes every active Pro user has granted.
-    #  2. The `consentDeniedResponse` middleware was missing
+    #     no UI toggle for that scope. Swapped to `ai_insights` +
+    #     `health_tracking` — same as generateProtocol / refineProtocol.
+    #  2. `consentDeniedResponse` middleware was missing
     #     `Cache-Control: no-transform`, so the Tinfoil shim's brotli
-    #     header bug turned 403s into `net::ERR_CONTENT_DECODING_FAILED`
-    #     — the actual consent error was invisible in the browser.
+    #     header bug turned 403s into `net::ERR_CONTENT_DECODING_FAILED`.
     #
     # v0.1.29 migrated Research Radar literature search into the enclave
     # and swapped the upstream x402 API from /api/literature (plaintext)
@@ -58,7 +61,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:8c7ca094b2569c52064545f3594f54cd91f357540288d00fa711641f52c04cae"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:69f39b1dc26445abf061ceff35ccd1b71759d6aaa5f71f178b3f4ca8abd8465e"
     env:
       - PORT: "8080"
     secrets:
