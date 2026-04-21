@@ -25,7 +25,36 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.37 (this release) fixes a concurrent-poll race in
+    # v0.1.38 (this release) makes the literature-search status
+    # handler mode-aware so deep-mode actually emits an Aubrai
+    # synthesis row. The old if/else after HPKE-decrypt took the
+    # `ingestReferences` branch whenever upstream returned any
+    # papers (basically always) and buried the synthesis text as
+    # an `ai_summary` field on each paper row — no row with
+    # source:"aubrai" was ever emitted, so the Deep Analysis card
+    # never appeared in the UI. Now the status handler reads
+    # `mode: "fast" | "deep"` from the request body (default
+    # "fast" for backwards compat) and the ingest is ADDITIVE:
+    # papers always get pushed when upstream returned references[],
+    # plus a synthesis row when mode === "deep".
+    #
+    # Also: `ingestDeepResults` in literatureIngest.ts dropped the
+    # `if (rawItems.length > 0) return []` guard (now called
+    # deliberately alongside references) and its synthesis row
+    # uses a deterministic external_id `deep-synthesis-${userId}-
+    # ${term}` — repeated deep scans update the same aubrai card
+    # in place via HMAC dedup instead of piling up fresh cards.
+    #
+    # Paired client-side changes (vita-app): PendingJob carries a
+    # `mode` field populated at kickoff by all three sites
+    # (triggerPoll fast → fast; startDeepPoll + triggerDeepForTerm
+    # → deep); mode is sent in every status body; pollJobs filters
+    # deep rawItems to aubrai-source only before saving. Net UX:
+    # global Scan writes fast papers + aubrai synthesis; per-term
+    # Start Deep Search writes aubrai synthesis only and leaves
+    # the article list untouched.
+    #
+    # v0.1.37 fixed a concurrent-poll race in
     # /api/literature-search/status that made deep-mode scans toast
     # "Encryption key expired. Please run the scan again." immediately
     # after the feed had populated with new articles. The client's 6 s
@@ -149,7 +178,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:2de90a04e9d9548072330952bdb85f5c6a567a03995033836e68c0409060cb42"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:ef06490d3b521ec47e338931bd6ee92bcd6070e2519e9027eda3a69bef6df947"
     env:
       - PORT: "8080"
     secrets:
