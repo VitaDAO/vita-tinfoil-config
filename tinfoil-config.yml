@@ -25,23 +25,40 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.39 (this release) adds a dedicated deep-mode prompt for
-    # non-condition tracked terms (rapamycin, NMN, creatine, etc.).
-    # After v0.1.38 started actually rendering the aubrai synthesis
-    # row, deep scans on non-condition terms came back in ~72 s with
-    # "The initial search did not retrieve enough relevant evidence,
-    # and no better follow-up search plan could be generated." The
-    # old `buildQuestion` in literatureHelpers.ts only branched into
-    # the rich structured prompt when `mode === "deep" && isCondition`
+    # v0.1.40 (this release) normalises the deep-mode prompt across
+    # condition and non-condition tracked terms. v0.1.39's non-condition
+    # variant used a thinner 6-item "provide a synthesis" framing and
+    # upstream kept bailing with "evidence set too weak or too indirect
+    # to support a confident synthesis". Meanwhile the 4-item
+    # "tactical longevity optimization strategy" condition prompt has
+    # been producing confident syntheses for months. This release
+    # collapses to one deep prompt whose only difference between the
+    # two paths is the opener:
+    #   - condition     → "Given a patient managing ${term}, ..."
+    #   - non-condition → "Given interest in ${term} for longevity, ..."
+    # Everything after the comma is byte-identical so upstream's deep
+    # pipeline gets the same structured query in both cases. The
+    # condition prompt's condition-specific phrasing ("mitigate the
+    # condition's impact on healthspan and lifespan") was swapped for
+    # the neutral "interventions relevant to ${term}" so the shared
+    # body reads cleanly for either a chronic condition or a tracked
+    # intervention — keep an eye on condition-scan quality after this
+    # lands and tune further if needed.
+    #
+    # v0.1.39 added a dedicated deep-mode prompt for non-condition
+    # tracked terms (rapamycin, NMN, creatine, etc.). Deep scans on
+    # non-condition terms had been coming back in ~72 s with "The
+    # initial search did not retrieve enough relevant evidence, and
+    # no better follow-up search plan could be generated." The old
+    # `buildQuestion` in literatureHelpers.ts only branched into the
+    # rich structured prompt when `mode === "deep" && isCondition`
     # — everything else (including deep scans on non-condition terms)
     # fell through to the generic fast-mode one-liner, which gave
     # upstream's deep pipeline too little to work with for the follow-
-    # up query planner. A parallel deep-mode prompt for interventions/
-    # topics (mechanism, dosing, biomarkers, synergies, trials, open
-    # questions) lands in this release. Latent bug since the original
-    # Supabase edge function — only surfaced now because v0.1.38 was
-    # the first release that actually delivered the synthesis to the
-    # UI, making the thin content visible.
+    # up query planner. Latent bug since the original Supabase edge
+    # function — only surfaced now because v0.1.38 was the first
+    # release that actually delivered the synthesis to the UI, making
+    # the thin content visible.
     #
     # v0.1.38 made the literature-search status handler mode-aware
     # so deep-mode actually emits an Aubrai synthesis row. The old
@@ -196,7 +213,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:e9e9d72977a8a6d58714e424984f321d2380135a7d65ef714f708fcf5a2eef1d"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:f654bfe7be8e99957208968e2d8f754c552954efb10087273a551c5c64c73c4e"
     env:
       - PORT: "8080"
     secrets:
