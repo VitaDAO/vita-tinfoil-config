@@ -25,7 +25,28 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.40 (this release) normalises the deep-mode prompt across
+    # v0.1.41 (this release) restores three biomarker-name helper
+    # functions (`stripParens`, `reverseWords`, `biomarkerNameToSlug`)
+    # that had silently disappeared from
+    # `tinfoil-proxy/src/handlers/parseLabResults.ts` on 2026-04-17.
+    # Lovable's sync resolved a merge conflict by renaming the older
+    # copy with a "(# Name clash 2026-04-17 ... #).ts" suffix; the
+    # three helpers lived only in that orphaned file, but the live
+    # handler still referenced them. Net effect at runtime: every
+    # `/api/parse-lab-results` call hit
+    #   ReferenceError: stripParens is not defined
+    # for every biomarker-name variant it tried, the per-variant loop
+    # bailed silently, and the response came back HTTP 200 with
+    # `success: true` but `biomarkers: []` and the warnings array
+    # exposing the failure. Surfaced via the new
+    # `vita-app/scripts/parse-lab-test.ts` standalone smoke test that
+    # mirrors the browser's SecureClient flow against the live enclave.
+    # Fix is a paste-back of the three helpers verbatim from the
+    # clash file; clash file deleted, plus two other unused clash
+    # files in the same tree (literatureSearchStatus, server) that
+    # had no orphaned references but were obvious cruft.
+    #
+    # v0.1.40 normalised the deep-mode prompt across
     # condition and non-condition tracked terms. v0.1.39's non-condition
     # variant used a thinner 6-item "provide a synthesis" framing and
     # upstream kept bailing with "evidence set too weak or too indirect
@@ -213,7 +234,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:f654bfe7be8e99957208968e2d8f754c552954efb10087273a551c5c64c73c4e"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:255c3ca7dbad22458f01285c9bf87d3a10d3321706be6fac560a0e8b131d7c2c"
     env:
       - PORT: "8080"
     secrets:
