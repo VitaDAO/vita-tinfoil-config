@@ -25,7 +25,62 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.41 (this release) restores three biomarker-name helper
+    # v0.1.42 (this release) hardens the lab parser against three
+    # classes of model failure observed in production against three
+    # real-world lab PDFs (Romanian Sanador, Swiss Familienpraxis,
+    # Malaysian Prince Court — saved as regression fixtures under
+    # vita-app/scripts/regression-fixtures/v0.1.41-*).
+    #
+    # 1. Per-slice routing for multi-page input. The handler used to
+    #    silently ignore `fallback_slices` when text-extraction of
+    #    `file_data` succeeded — net effect on the Malaysian fixture
+    #    (7 photographed pages uploaded as a multi-image batch) was
+    #    11 of 55 biomarkers returned, with pages 2-7 dropped without
+    #    warning. Now: when the request carries 2+ slices, the handler
+    #    bypasses primary text-extraction and runs vision per slice,
+    #    merging by confidence-dedup. Single-page inputs unchanged.
+    #    Validated improvements: PDF 3 11/55 → 50/55, PDF 1 17/29 →
+    #    24/29, PDF 2 holds 43/45.
+    #
+    # 2. Sanity-range filter (~50 hardcoded max-plausible bounds —
+    #    Hb 5–25 g/dL, Iron 10–500 µg/dL, etc., wide enough to admit
+    #    critical-care extremes). Drops + warns any value outside.
+    #    Catches the Iron-22×-off (PDF 1: 4.29 mg/dL real-value
+    #    96 µg/dL) and Hgb-decimal-slip (PDFs 1+2: 1.43-1.46 real
+    #    14.3-14.6) classes that all upstream paths ship with
+    #    confidence 1.00. New file
+    #    `tinfoil-proxy/src/lib/biomarkerSanityRanges.ts`.
+    #
+    # 3. Anti-hallucination filter. Maintains a haystack of every
+    #    chunk of OCR'd / text-extracted source content during the
+    #    request; drops any returned biomarker whose name (or
+    #    catalog alias) doesn't appear in the haystack. Catches the
+    #    structurer's tendency to fabricate plausible-looking results
+    #    at confidence 1.00 (ESR 2 mm/h hallucinated on PDF 2's
+    #    Swiss lab — no ESR row in source; HIV Ag/Ab hallucinated on
+    #    PDF 3's Malaysian lab — no HIV test in source). Permissive
+    #    when haystack is empty (pure-image upload with no OCR
+    #    sidecar). New file
+    #    `tinfoil-proxy/src/lib/biomarkerHaystack.ts`.
+    #
+    # Plus three smaller changes:
+    # - Value normaliser handles inline H/L abnormal flags
+    #   ("1.17 L", "1.1 H"), footnote markers ("4.6 #1"), comparator
+    #   operators (">90 eGFR", "<20 RF") and qualitative results
+    #   (Reactive / Negative / Normal / Nil). New optional fields on
+    #   the response biomarker shape: abnormal_flag, comparator,
+    #   qualitative_value (with NaN value for the qualitative case
+    #   so consumers know to check the field).
+    # - Patient-sex pass-through into the system prompt (catches
+    #   Estradiol-Female-applied-to-male on PDF 2). Was already in
+    #   the request body but not woven into the structurer's context.
+    # - Test harness `vita-app/scripts/parse-lab-test.ts` extended
+    #   with --image-dir mode (matches browser
+    #   downscaleImageForParsing — 2000px JPEG q85) and
+    #   VITA_TEST_PER_PAGE=1 mode. Used to capture the v0.1.41
+    #   regression fixtures.
+    #
+    # v0.1.41 restored three biomarker-name helper
     # functions (`stripParens`, `reverseWords`, `biomarkerNameToSlug`)
     # that had silently disappeared from
     # `tinfoil-proxy/src/handlers/parseLabResults.ts` on 2026-04-17.
@@ -234,7 +289,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:255c3ca7dbad22458f01285c9bf87d3a10d3321706be6fac560a0e8b131d7c2c"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:2325266e878c610cf477528ccacf52a873cbfffb3cc049dc8520b504446ddd6a"
     env:
       - PORT: "8080"
     secrets:
