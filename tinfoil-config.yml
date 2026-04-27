@@ -25,7 +25,42 @@ containers:
     # Do NOT use `:latest`. The `:main` tag is included as a human-readable
     # pointer only — Tinfoil binds verification to the `@sha256:...` suffix.
     #
-    # v0.1.43 (this release) fixes a v0.1.42 regression where the
+    # v0.1.44 (this release) tightens the v0.1.43 anti-hallucination
+    # filter against two follow-on bugs surfaced by re-running the
+    # three-PDF regression matrix.
+    #
+    # 1. Unit-conversion false drops on the German PDF. The handler
+    #    runs SI → conventional unit conversion (mmol/L → mg/dL,
+    #    g/L → g/dL) BEFORE the anti-hallucination filter, so the
+    #    haystack still contains the original "5.1 mmol/L" while the
+    #    biomarker shape now carries `value: 197.07, unit: "mg/dL"` —
+    #    neither the value nor the unit token substring-matches.
+    #    Affected 8 legitimate biomarkers on PDF 2 (Cholesterol,
+    #    Triglycerides, HDL, LDL, Glucose, Urea, Creatinine, Iron)
+    #    that were getting dropped + warned despite being clearly
+    #    present in source. Fix: extended `HaystackBiomarker` with
+    #    `original_value` + `original_unit`; the value-pattern check
+    #    now tries the post-conversion pair first, then the pre-
+    #    conversion pair as fallback. The handler populates both
+    #    fields when it converts.
+    #
+    # 2. ESR 2 mm/h false-passes through the filter on the same PDF.
+    #    Root cause: the value-pattern fallback regex
+    #    `\b2\s*mm` (single-digit `2`, unit token `mm`) matched
+    #    "2 mmol" inside the source's Triglyceride reference range
+    #    `<2 mmol/L`. ESR isn't actually present in the German lab's
+    #    panel — pure hallucination at confidence 1.00. Fix: added
+    #    `\b` word-boundary anchor on BOTH ends of the unit token —
+    #    `\b2\s*mm\b` no longer matches `2 mmol`. Other single-digit
+    #    biomarkers with their own units continue to pass correctly.
+    #
+    # Both fixes are localised to
+    # `tinfoil-proxy/src/lib/biomarkerHaystack.ts`. Validated against
+    # all three regression fixtures: PDF 1 holds at 16, PDF 2 jumps
+    # from ~35 to ~42 (8 unit-conversion drops resolved, ESR still
+    # removed), PDF 3 holds at ~50.
+    #
+    # v0.1.43 fixes a v0.1.42 regression where the
     # anti-hallucination filter was over-aggressively dropping
     # legitimate biomarkers on non-English lab reports. The filter
     # checks if a returned biomarker's name appears in the OCR'd
@@ -322,7 +357,7 @@ containers:
     # v0.1.4 added /api/generate-protocol + /api/generate-protocol-status.
     # v0.1.3 added /api/refine-protocol.
     # v0.1.2 added /api/aubrai-x402-daily-insight.
-    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:f859a8937d236dce3fe85f6f6662f6ac6dc87d147834c4fdecbbe840aa0072e8"
+    image: "ghcr.io/vitadao/vita-tinfoil-proxy:main@sha256:627fd06fdee04c18d2f1338ad61dd4a9382ff23344f27b318b3b1116fa7f950b"
     env:
       - PORT: "8080"
     secrets:
